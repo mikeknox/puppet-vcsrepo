@@ -29,7 +29,7 @@ Puppet::Type.type(:vcsrepo).provide(:svn, :parent => Puppet::Provider::Vcsrepo) 
   
   def revision
     at_path do
-      svn('info')[/^Revision:\s+(\d+)/m, 1]
+      svn('info', '-r', 'HEAD')[/^Revision:\s+(\d+)/m, 1]
     end
   end
 
