@@ -19,7 +19,25 @@ Puppet::Type.newtype(:vcsrepo) do
            over time (eg, some VCS tags and branch names)"
   
   ensurable do
+    attr_accessor :latest
+    
+    def insync?(is)
+      @should ||= []
 
+      case should
+        when :present
+          return true unless [:absent, :purged, :held].include?(is)
+        when :latest
+          if provider.latest?
+            return true
+          else
+            self.debug "%s %s is installed, latest is %s" %
+                [@resource.name, provider.revision, provider.latest]
+            return false
+           end
+      end
+    end     
+              
     newvalue :present do
       provider.create
     end
@@ -33,24 +51,36 @@ Puppet::Type.newtype(:vcsrepo) do
     end
 
     newvalue :latest, :required_features => [:reference_tracking] do
+      notice "latest started"
       if provider.exists?
         if provider.respond_to?(:update_references)
           provider.update_references
         end
-        reference = resource.value(:revision) || provider.revision
-        notice "Updating to latest '#{reference}' revision"
-        provider.revision = reference
+        if provider.respond_to?(:latest?)
+            reference = provider.latest || provider.revision
+            notice "Updating to latest '#{reference}' revision"
+            provider.revision = reference
+        else
+          reference = resource.value(:revision) || provider.revision
+          notice "Updating to latest '#{reference}' revision"
+          provider.revision = reference
+        end
+        
+        
+        notice "latest finished"
       else
         provider.create
       end
     end
 
     def retrieve
+      notice "starting retrieve in type"
       prov = @resource.provider
       if prov
         if prov.class.feature?(:bare_repositories)
           if prov.working_copy_exists?
             :present
+            notice "present"
           elsif prov.bare_exists?
             :bare
           else
