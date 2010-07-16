@@ -31,7 +31,7 @@ Puppet::Type.newtype(:vcsrepo) do
           if provider.latest?
             return true
           else
-            self.debug "%s %s is installed, latest is %s" %
+            self.debug "%s repo revision is %s, latest is %s" %
                 [@resource.name, provider.revision, provider.latest]
             return false
            end
@@ -51,36 +51,28 @@ Puppet::Type.newtype(:vcsrepo) do
     end
 
     newvalue :latest, :required_features => [:reference_tracking] do
-      notice "latest started"
       if provider.exists?
         if provider.respond_to?(:update_references)
           provider.update_references
         end
         if provider.respond_to?(:latest?)
             reference = provider.latest || provider.revision
-            notice "Updating to latest '#{reference}' revision"
-            provider.revision = reference
         else
           reference = resource.value(:revision) || provider.revision
-          notice "Updating to latest '#{reference}' revision"
-          provider.revision = reference
         end
-        
-        
-        notice "latest finished"
+        notice "Updating to latest '#{reference}' revision"
+        provider.revision = reference
       else
         provider.create
       end
     end
 
     def retrieve
-      notice "starting retrieve in type"
       prov = @resource.provider
       if prov
         if prov.class.feature?(:bare_repositories)
           if prov.working_copy_exists?
             :present
-            notice "present"
           elsif prov.bare_exists?
             :bare
           else
