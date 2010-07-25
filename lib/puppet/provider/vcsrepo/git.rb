@@ -29,15 +29,36 @@ Puppet::Type.type(:vcsrepo).provide(:git, :parent => Puppet::Provider::Vcsrepo) 
     FileUtils.rm_rf(@resource.value(:path))
   end
   
+  def latest
+    fetch
+    update_references
+    canonical = at_path { git('rev-parse', 'origin') } 
+    return  canonical.chomp
+  end
+  
+  def latest?
+    current   = self.revision
+    canonical = self.latest  
+      if current.chomp == canonical
+        return true
+      else
+        return false
+      end
+  end
+  
   def revision
     fetch
     update_references
     current   = at_path { git('rev-parse', 'HEAD') }
-    canonical = at_path { git('rev-parse', @resource.value(:revision)) }
+    if @resource.value(:revision) == ''
+      canonical = at_path { git('rev-parse', @resource.value(:revision)) }
+    else
+      canonical = at_path { git('rev-parse') }
+    end
     if current == canonical
       @resource.value(:revision)
     else
-      current
+      current.chomp
     end
   end
 

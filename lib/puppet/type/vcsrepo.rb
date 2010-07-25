@@ -20,24 +20,32 @@ Puppet::Type.newtype(:vcsrepo) do
   
   ensurable do
     attr_accessor :latest
-    
-    def insync?(is)
-      @should ||= []
+        
+  def insync?(is)
+    @should ||= []
+    if is == :absent
+      provider.create
+    end
 
-      case should
-        when :present
-          return true unless [:absent, :purged, :held].include?(is)
-        when :latest
+    case should
+      when :present
+        return true unless [:absent, :purged, :held].include?(is)
+      when :latest
+        if provider.respond_to?(:latest?)
           if provider.latest?
             return true
           else
             self.debug "%s repo revision is %s, latest is %s" %
                 [@resource.name, provider.revision, provider.latest]
             return false
-           end
-      end
-    end     
-              
+          end
+        else
+          # this replicates the previous behaviour for providers that don't have :latest?
+          return true
+        end
+    end
+  end     
+             
     newvalue :present do
       provider.create
     end
