@@ -3,6 +3,7 @@ require File.join(File.dirname(__FILE__), '..', 'vcsrepo')
 Puppet::Type.type(:vcsrepo).provide(:git, :parent => Puppet::Provider::Vcsrepo) do
   desc "Supports Git repositories"
 
+  ##TODO modify the commands below so that the su - is included
   commands :git => 'git'
   defaultfor :git => :exists
   has_features :bare_repositories, :reference_tracking
@@ -29,21 +30,23 @@ Puppet::Type.type(:vcsrepo).provide(:git, :parent => Puppet::Provider::Vcsrepo) 
     FileUtils.rm_rf(@resource.value(:path))
   end
   
-  def revision
-    fetch
-    update_references
-    current   = at_path { git('rev-parse', 'HEAD') }
-    canonical = at_path { git('rev-parse', @resource.value(:revision)) }
-    if current == canonical
-      @resource.value(:revision)
-    else
-      current
+  def latest?
+    at_path do
+      return self.revision == self.latest
     end
+  end
+
+  def latest
+    fetch
+    return get_revision('origin/HEAD')
+  end
+
+  def revision
+    return get_revision('HEAD')
   end
 
   def revision=(desired)
     fetch
-    update_references
     if local_branch_revision?(desired)
       at_path do
         git('checkout', desired)
@@ -98,8 +101,12 @@ Puppet::Type.type(:vcsrepo).provide(:git, :parent => Puppet::Provider::Vcsrepo) 
     if @resource.value(:ensure) == :bare
       args << '--bare'
     end
-    args.push(source, path)
-    git(*args)
+    if !File.exist?(File.join(@resource.value(:path), '.git'))
+      args.push(source, path)
+      git(*args)
+    else
+      notice "Repo has already been cloned"
+    end
   end
 
   def fetch
@@ -213,4 +220,17 @@ Puppet::Type.type(:vcsrepo).provide(:git, :parent => Puppet::Provider::Vcsrepo) 
     at_path { git('branch', '-a') }.gsub('*', ' ').split(/\n/).map { |line| line.strip }
   end
 
+  def get_revision(rev)
+    if !working_copy_exists?
+      create
+    end
+
+    current = at_path { git('rev-parse', rev).strip }
+    if @resource.value(:revision)
+        canonical = at_path { git('rev-parse', @resource.value(:revision)).strip }
+        current = @resource.value(:revision) if current == canonical
+    end
+
+    return current
+  end
 end
