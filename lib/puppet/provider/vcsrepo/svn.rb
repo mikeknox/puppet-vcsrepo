@@ -33,20 +33,14 @@ Puppet::Type.type(:vcsrepo).provide(:svn, :parent => Puppet::Provider::Vcsrepo) 
 
   def latest?
     at_path do
-      if self.exists? then
-        return false
-      elsif self.revision < self.latest then
-        return false
-      else
-        return true
-      end
+      return self.revision == self.latest
     end
   end
 
   def latest
     at_path do
       if self.exists? then
-        svn('info', '-r', 'HEAD')[/^Revision:\s+(\d+)/m, 1]
+        return svn('info', '-r', 'HEAD')[/^Revision:\s+(\d+)/m, 1]
       else
         return nil
       end

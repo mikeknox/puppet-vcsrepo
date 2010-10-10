@@ -31,13 +31,8 @@ Puppet::Type.newtype(:vcsrepo) do
           if is == :latest
             return true
           else
-            if provider.respond_to?(:latest?)
-              self.debug "%s repo revision is %s, latest is %s" %
+            self.debug "%s repo revision is %s, latest is %s" %
                 [@resource.name, provider.revision, provider.latest]
-            else
-              self.debug "%s repo revision is %s" %
-                [@resource.name, provider.revision]
-            end
             return false
           end
       end
